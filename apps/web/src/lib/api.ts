@@ -1,29 +1,32 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API_BASE = "/api";
+
+async function apiFetch(path: string, options?: RequestInit) {
+  const res = await fetch(`${API_BASE}${path}`, options);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res;
+}
 
 export async function fetchConversations() {
-  const res = await fetch(`${API_URL}/conversations`);
-  if (!res.ok) throw new Error("Failed to fetch conversations");
+  const res = await apiFetch("/conversations");
   return res.json();
 }
 
 export async function createConversation(title?: string) {
-  const res = await fetch(`${API_URL}/conversations`, {
+  const res = await apiFetch("/conversations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: title || "New Conversation" }),
   });
-  if (!res.ok) throw new Error("Failed to create conversation");
   return res.json();
 }
 
 export async function getConversation(id: string) {
-  const res = await fetch(`${API_URL}/conversations/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch conversation");
+  const res = await apiFetch(`/conversations/${id}`);
   return res.json();
 }
 
 export async function deleteConversation(id: string) {
-  await fetch(`${API_URL}/conversations/${id}`, { method: "DELETE" });
+  await apiFetch(`/conversations/${id}`, { method: "DELETE" });
 }
 
 export async function sendMessage(
@@ -32,18 +35,15 @@ export async function sendMessage(
   model?: string,
   temperature?: number
 ) {
-  const res = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+  return apiFetch(`/conversations/${conversationId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, model, temperature }),
   });
-  if (!res.ok) throw new Error("Failed to send message");
-  return res;
 }
 
 export async function getMessages(conversationId: string) {
-  const res = await fetch(`${API_URL}/conversations/${conversationId}/messages`);
-  if (!res.ok) throw new Error("Failed to fetch messages");
+  const res = await apiFetch(`/conversations/${conversationId}/messages`);
   return res.json();
 }
 
@@ -52,16 +52,11 @@ export async function submitFeedback(
   messageId: string,
   feedback: "thumbs_up" | "thumbs_down"
 ) {
-  const res = await fetch(
-    `${API_URL}/conversations/${conversationId}/messages/${messageId}/feedback`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedback }),
-    }
-  );
-  if (!res.ok) throw new Error("Failed to submit feedback");
-  return res.json();
+  await apiFetch(`/conversations/${conversationId}/messages/${messageId}/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feedback }),
+  });
 }
 
 export async function regenerateMessage(
@@ -69,11 +64,9 @@ export async function regenerateMessage(
   model?: string,
   temperature?: number
 ) {
-  const res = await fetch(`${API_URL}/conversations/${conversationId}/regenerate`, {
+  return apiFetch(`/conversations/${conversationId}/regenerate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, temperature }),
   });
-  if (!res.ok) throw new Error("Failed to regenerate");
-  return res;
 }

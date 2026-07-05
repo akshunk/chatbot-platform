@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     config_dir: str = str(Path(__file__).parent.parent.parent / "config")
     core_dir: str = str(Path(__file__).parent.parent.parent / "core")
     default_provider: str = "ollama"
-    default_model: str = "llama3.2"
+    default_model: str = "llama3.2:3b"
     default_personality: str = "default"
     cors_origins: str = "http://localhost:3000"
 

@@ -1,14 +1,14 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Nova Chat",
-  description: "Conversational chatbot platform",
+  title: "Nova - Conversational AI",
+  description: "Unfiltered. Direct. Intelligent.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col">{children}</body>
+      <body className="h-screen overflow-hidden">{children}</body>
     </html>
   );
 }

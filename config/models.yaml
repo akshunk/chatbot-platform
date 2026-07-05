@@ -1,11 +1,11 @@
-default: llama3.2
+default: llama3.2:3b
 
 providers:
   ollama:
-    default: llama3.2
+    default: llama3.2:3b
     models:
-      - name: llama3.2
-        display: Llama 3.2
+      - name: llama3.2:3b
+        display: Llama 3.2 3B
         context: 8192
       - name: mistral
         display: Mistral
