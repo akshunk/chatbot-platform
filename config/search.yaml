@@ -1,0 +1,14 @@
+enabled: false
+provider: duckduckgo
+max_results: 5
+freshness: 7d
+trigger_keywords:
+  - what is
+  - who is
+  - when did
+  - current
+  - latest
+  - news
+  - today
+  - now
+  - recent

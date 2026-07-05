@@ -1,0 +1,22 @@
+default: ollama
+
+ollama:
+  type: ollama
+  base_url: http://localhost:11434
+
+openai:
+  type: openai_compatible
+  base_url: https://api.openai.com/v1
+  api_key: ${OPENAI_API_KEY}
+
+groq:
+  type: groq
+  base_url: https://api.groq.com/openai/v1
+  api_key: ${GROQ_API_KEY}
+
+openrouter:
+  type: openrouter
+  base_url: https://openrouter.ai/api/v1
+  api_key: ${OPENROUTER_API_KEY}
+  site_url: http://localhost:3000
+  site_name: Chatbot Platform

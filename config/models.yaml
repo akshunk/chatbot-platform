@@ -1,0 +1,54 @@
+default: llama3.2
+
+providers:
+  ollama:
+    default: llama3.2
+    models:
+      - name: llama3.2
+        display: Llama 3.2
+        context: 8192
+      - name: mistral
+        display: Mistral
+        context: 8192
+      - name: qwen2.5
+        display: Qwen 2.5
+        context: 32768
+      - name: deepseek-coder-v2
+        display: DeepSeek Coder V2
+        context: 65536
+
+  openai:
+    default: gpt-4o
+    models:
+      - name: gpt-4o
+        display: GPT-4o
+        context: 128000
+      - name: gpt-4o-mini
+        display: GPT-4o Mini
+        context: 128000
+
+  groq:
+    default: llama3-70b-8192
+    models:
+      - name: llama3-70b-8192
+        display: Llama 3 70B
+        context: 8192
+      - name: llama3-8b-8192
+        display: Llama 3 8B
+        context: 8192
+      - name: mixtral-8x7b-32768
+        display: Mixtral 8x7B
+        context: 32768
+
+  openrouter:
+    default: mistralai/mistral-large
+    models:
+      - name: mistralai/mistral-large
+        display: Mistral Large
+        context: 128000
+      - name: anthropic/claude-3.5-sonnet
+        display: Claude 3.5 Sonnet
+        context: 200000
+      - name: meta-llama/llama-3.1-70b-instruct
+        display: Llama 3.1 70B
+        context: 131072

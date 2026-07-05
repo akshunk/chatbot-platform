@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #252525;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --user-bubble: #2e1065;
+  --assistant-bubble: #1e1e1e;
+  --border: #333;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
