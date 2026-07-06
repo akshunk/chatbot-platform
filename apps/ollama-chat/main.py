@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+import sys
+
+sys.path.insert(0, "/workspace/chatbot-platform")
+
 import gradio as gr
 import httpx
 import json
+
+from core.personality import PersonalityBuilder, get_personality_dir, list_personalities
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 MODEL = "llama3.2:3b"
@@ -17,7 +23,7 @@ def to_str(v):
     return str(v or "")
 
 
-def build_messages(message, history):
+def build_chat_messages(message, history):
     msgs = []
     for h in history:
         if isinstance(h, dict):
@@ -29,8 +35,18 @@ def build_messages(message, history):
     return msgs
 
 
-async def chat(message, history):
-    messages = build_messages(message, history)
+def build_messages(message, history, personality_name: str):
+    msgs = []
+    personality_dir = get_personality_dir(personality_name)
+    builder = PersonalityBuilder(personality_dir)
+    system_prompt = builder.build_system_prompt()
+    if system_prompt:
+        msgs.append({"role": "system", "content": system_prompt})
+    return msgs + build_chat_messages(message, history)
+
+
+async def chat(message, history, personality_name):
+    messages = build_messages(message, history, personality_name)
 
     payload = {
         "model": MODEL,
@@ -56,10 +72,23 @@ async def chat(message, history):
                     yield full
 
 
+personalities_list = list_personalities()
+personality_choices = [(f"{p['label']} ({p['name']}) — {p['description']}", p["name"]) for p in personalities_list]
+
 demo = gr.ChatInterface(
     chat,
+    additional_inputs=[
+        gr.Dropdown(
+            choices=personality_choices,
+            value=personality_choices[0][1],
+            label="Personality",
+            interactive=True,
+            allow_custom_value=False,
+        ),
+    ],
+    additional_inputs_accordion=gr.Accordion(label="Personality", open=True),
     title="Nova",
-    description="Uncensored conversational AI",
+    description="Conversational AI with selectable personality",
 )
 
 if __name__ == "__main__":

@@ -8,6 +8,15 @@ default:
     frequency_penalty: 0.1
     presence_penalty: 0.1
 
+standard:
+  name: Standard
+  description: Helpful, harmless, honest — a safe ChatGPT-style assistant
+  directory: core/personality/standard
+  parameters:
+    temperature: 0.7
+    frequency_penalty: 0.1
+    presence_penalty: 0.0
+
 experimental:
   name: Nova (Experimental)
   description: Testing new personality variations
