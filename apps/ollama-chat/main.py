@@ -44,7 +44,7 @@ def build_messages(message, history, personality_name: str):
     return msgs + build_chat_messages(message, history)
 
 
-async def chat(message, history, personality_name):
+async def stream_chat(message, history, personality_name):
     messages = build_messages(message, history, personality_name)
     model = get_personality_model(personality_name)
 
@@ -75,26 +75,54 @@ async def chat(message, history, personality_name):
 personalities_list = list_personalities()
 personality_choices = [(f"{p['label']} ({p['name']}) — {p['description']} [{p['model']}]", p["name"]) for p in personalities_list]
 
-css = """
-footer { position: sticky !important; bottom: 0 !important; }
-.wrap { min-height: 0 !important; }
+CSS = """
+html, body, .gradio-container { height: 100vh; margin: 0; padding: 0; overflow: hidden; }
+.gradio-container { display: flex; flex-direction: column; }
 """
-demo = gr.ChatInterface(
-    chat,
-    additional_inputs=[
-        gr.Dropdown(
-            choices=personality_choices,
-            value=personality_choices[0][1],
-            label="Personality",
-            interactive=True,
-            allow_custom_value=False,
-        ),
-    ],
-    additional_inputs_accordion=gr.Accordion(label="Personality", open=False),
-    title="Nova",
-    description="Conversational AI with selectable personality",
-    css=css,
-)
+
+with gr.Blocks(title="Nova", fill_height=True) as demo:
+    gr.Markdown("## Nova")
+
+    personality = gr.Dropdown(
+        choices=personality_choices,
+        value=personality_choices[0][1],
+        label="Personality",
+        interactive=True,
+        allow_custom_value=False,
+    )
+
+    chatbot = gr.Chatbot(
+        label="Chat",
+        render_markdown=True,
+        autoscroll=False,
+        height=None,
+    )
+
+    with gr.Row():
+        msg = gr.Textbox(
+            placeholder="Type a message...",
+            show_label=False,
+            container=False,
+            scale=9,
+        )
+        send = gr.Button("Send", variant="primary", scale=1)
+
+    async def respond(user_msg, chat_history, personality_name):
+        if chat_history is None:
+            chat_history = []
+        if not user_msg:
+            yield "", chat_history
+            return
+        chat_history.append([user_msg, None])
+        yield "", chat_history
+        full = ""
+        async for chunk in stream_chat(user_msg, chat_history[:-1], personality_name):
+            full = chunk
+            chat_history[-1] = [user_msg, full]
+            yield "", chat_history
+
+    send.click(respond, [msg, chatbot, personality], [msg, chatbot])
+    msg.submit(respond, [msg, chatbot, personality], [msg, chatbot])
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, css=CSS)
