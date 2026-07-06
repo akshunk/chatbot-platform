@@ -46,12 +46,66 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 |---------|------|-------------|
 | Gradio chat | 7860 | `python3 apps/ollama-chat/main.py` |
 | Ollama | 11434 | `ollama serve` (should already be running) |
-| SSH tunnel (serveo) | varies | `ssh -R 80:localhost:7860 serveo.net` |
+| SSH tunnel (serveo) | varies | `scripts/tunnel.sh start` |
+
+## Quick Start (all services)
+```bash
+./scripts/start.sh
+```
+Single command: checks/starts Ollama, pulls model if missing, kills old Gradio and starts fresh, starts autossh tunnel via serveo.net, prints URLs. Ctrl+C stops all.
+
+## Scripts
+- `scripts/start.sh` — All-in-one launcher (Ollama → model → Gradio → tunnel)
+- `scripts/tunnel.sh` — Tunnel manager with start/stop/status. Uses autossh (auto-reconnect). Accepts `TUNNEL_PORT` and `TUNNEL_HOST` env vars. URL saved to `/tmp/tunnel.url`.
 
 ## Tunnel
-- Service: serveo.net (not localhost.run)
-- URL saved to `/tmp/tunnel.url`
-- Auto-restart not yet set up (run manually or via cron)
+
+### Service
+- **Primary**: serveo.net (more reliable than localhost.run)
+- **Fallback**: localhost.run — `TUNNEL_HOST=nokey@localhost.run ./scripts/tunnel.sh restart`
+
+### How it works
+- `autossh` creates a reverse SSH tunnel: remote port 80 → localhost:7860
+- Tunnel auto-reconnects if dropped (autossh monitors the connection)
+- Each connection gets a new random URL (ephemeral — no custom domain)
+
+### First time setup
+```bash
+ssh -o StrictHostKeyChecking=no serveo.net
+# Accept the host key, then Ctrl+C (host is now in known_hosts)
+```
+
+### Quick commands
+| Action | Command |
+|--------|---------|
+| Start tunnel | `./scripts/tunnel.sh start` |
+| Stop tunnel | `./scripts/tunnel.sh stop` |
+| Restart tunnel | `./scripts/tunnel.sh restart` |
+| Check status | `./scripts/tunnel.sh status` |
+| Get current URL | `cat /tmp/tunnel.url` |
+
+### Tunnel troubleshooting
+
+**Page not reachable on iPhone:**
+1. First check the local app: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7860` — should return `200`. If not, restart Gradio.
+2. Check tunnel status: `cat /tmp/tunnel.url` — if empty or stale, restart tunnel.
+3. Check autossh is running: `pgrep -f autossh`
+4. Try serveo directly (bypass autossh) to see real errors:
+   ```bash
+   pkill -f "autossh.*serveo"; sleep 1
+   ssh -o StrictHostKeyChecking=no -R 80:localhost:7860 serveo.net
+   ```
+5. If serveo fails, switch to localhost.run:
+   ```bash
+   TUNNEL_HOST=nokey@localhost.run ./scripts/tunnel.sh restart
+   ```
+6. Hard refresh on iPhone (Settings → Safari → Clear History and Website Data, or use private tab) — Gradio caches aggressively.
+
+**Common causes of "page not reachable":**
+- Gradio crashed but tunnel is still up (tunnel points at nothing)
+- Tunnel process died (autossh should restart it, but may take ~30s)
+- serveo.net is temporarily down (use localhost.run fallback)
+- iPhone cached an old Gradio page — Safari aggressively caches; use private tab or clear history
 
 ## Important Files
 - `/workspace/chatbot-platform/apps/ollama-chat/main.py` — Gradio chat app
@@ -59,18 +113,58 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 - `/workspace/chatbot-platform/core/personality/registry.py` — Name→dir resolver, `get_personality_model()`
 - `/workspace/chatbot-platform/config/personality.yaml` — Personality definitions with model per personality
 - `/workspace/chatbot-platform/core/personality/standard/` — Safe persona files
+- `/workspace/chatbot-platform/scripts/start.sh` — All-in-one launcher (Ollama → model → Gradio → tunnel)
+- `/workspace/chatbot-platform/scripts/tunnel.sh` — Tunnel manager (start/stop/status, autossh, serveo.net)
 - `/tmp/gradio_chat.py` — Active running copy (may differ from repo)
 - `/tmp/tunnel.url` — Current tunnel URL
+
+## Setting Up the UI (First Time)
+
+### Prerequisites (already installed on this machine)
+- Python 3.12+, `gradio`, `httpx`, `pyyaml` (`pip install gradio httpx pyyaml`)
+- Ollama (`/usr/local/bin/ollama`)
+
+### Starting from a clean session
+```bash
+# 1. Start Ollama (if not running)
+ollama serve &
+sleep 2
+
+# 2. Pull the default model (first time only — 2GB download)
+ollama pull llama3.2:3b
+
+# 3. Start the chat UI
+cd /workspace/chatbot-platform
+python3 apps/ollama-chat/main.py
+
+# 4. In another terminal, start the tunnel
+./scripts/tunnel.sh start
+```
+
+### Or use the all-in-one command:
+```bash
+cd /workspace/chatbot-platform && ./scripts/start.sh
+```
+
+### UI features
+- **Personality selector**: Open accordion below the chat — choose Nova, Standard, Companion, or Experimental
+- Each personality has its own system prompt (loaded from Markdown files) and model
+- Chat messages are shown in the browser session only (lost on refresh in Phase 1)
+
+### Accessing from iPhone
+- Open the tunnel URL in Safari (URL in `/tmp/tunnel.url`)
+- Add to Home Screen for app-like access
+- If page loads but chat doesn't respond, check that Ollama has the model loaded
 
 ## Known Issues
 - Chat history not persisted (browser memory only — lost on refresh)
 - Personality selector is in an accordion below the chat (Gradio limitation with `additional_inputs`)
-- No auto-restart script for the tunnel
 - `experimental` personality directory is empty
 
 ## Troubleshooting
 - If Gradio crashes: `fuser -k 7860/tcp && python3 apps/ollama-chat/main.py`
 - If Ollama model not found: use `llama3.2:3b` (with tag). Companion needs `dolphin-llama3:8b`
-- If tunnel dead: kill old serveo process, start new one with `ssh -R 80:localhost:7860 serveo.net`
+- If tunnel dead: `./scripts/tunnel.sh restart` (autossh reconnects automatically)
+- If everything needs a restart: `./scripts/start.sh` (handles all services, Ctrl+C to stop)
 - Run tests: `cd apps/ollama-chat && python3 -m pytest test_main.py -v`
 - Hard refresh (Cmd+Shift+R) if UI looks stale — Gradio caches aggressively

@@ -20,6 +20,12 @@ personality control, and uncensored responses.
 
 ## Running (Active Frontend)
 
+### Quick start (all services)
+```bash
+cd /workspace/chatbot-platform && ./scripts/start.sh
+```
+
+### Manual start
 ```bash
 cd apps/ollama-chat
 python3 main.py          # Gradio on port 7860
@@ -37,6 +43,28 @@ Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serve
 - Each personality specifies its own Ollama model via `model` field in config (default: `llama3.2:3b`, companion uses `dolphin-llama3:8b`)
 - The Gradio app reads the per-personality model at chat time, not a hardcoded MODEL variable
 - Personalities: `default` (uncensored Nova), `standard` (safe ChatGPT-style), `experimental` (empty)
+
+## Services & Scripts
+
+- `scripts/start.sh` — Single launcher: checks/starts Ollama, pulls model if needed, starts Gradio on 7860, starts autossh tunnel via serveo.net. Ctrl+C stops all.
+- `scripts/tunnel.sh` — Manages SSH tunnel (start/stop/status). Uses autossh for auto-reconnect. Saves URL to `/tmp/tunnel.url`.
+
+## Tunnel & iPhone Access
+
+- **Primary service**: serveo.net (fallback: `TUNNEL_HOST=nokey@localhost.run`)
+- URL changes each connection (ephemeral). Get current: `cat /tmp/tunnel.url`
+- If iPhone shows "page not reachable", first check local Gradio: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7860`
+  - Not `200`? → restart Gradio (likely crashed) — `fuser -k 7860/tcp && python3 apps/ollama-chat/main.py`
+  - `200`? → tunnel issue — restart tunnel: `./scripts/tunnel.sh restart`
+  - Hard refresh on iPhone (private tab) — Safari caches Gradio aggressively
+
+## First-Time UI Setup
+
+```bash
+pip install gradio httpx pyyaml          # deps (once)
+ollama pull llama3.2:3b                    # default model (once, ~2GB)
+./scripts/start.sh                         # start everything
+```
 
 ## Testing
 
