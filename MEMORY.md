@@ -161,6 +161,12 @@ cd /workspace/chatbot-platform && ./scripts/start.sh
 - Personality selector is in an accordion below the chat (Gradio limitation with `additional_inputs`)
 - `experimental` personality directory is empty
 
+## Fixed Issues
+### Async generator → page refresh (gradio 6.x)
+- **Bug**: `async def chat()` with `yield` in Gradio 6.19 ChatInterface caused page to refresh on message send instead of streaming response.
+- **Root cause**: Gradio 6.x doesn't properly handle async generators — it hangs and reloads the UI.
+- **Fix**: Changed `chat()` to a synchronous generator (`def` instead of `async def`) using `httpx.Client` instead of `httpx.AsyncClient`. All 15 tests pass.
+
 ## Troubleshooting
 - If Gradio crashes: `fuser -k 7860/tcp && python3 apps/ollama-chat/main.py`
 - If Ollama model not found: use `llama3.2:3b` (with tag). Companion needs `dolphin-llama3:8b`

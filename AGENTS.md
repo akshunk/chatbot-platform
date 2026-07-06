@@ -76,6 +76,12 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 
 `scripts/start.sh` auto-checks all system deps, Python deps, and models on startup.
 
+## Known Issues & Fixes
+
+### Chat page refreshes instead of responding
+- **Cause**: `async def` generator functions don't work with Gradio 6.x ChatInterface — the page reloads instead of streaming.
+- **Fix**: Use a synchronous generator (`def` not `async def`) with `httpx.Client` (not `AsyncClient`). The `chat()` function in `apps/ollama-chat/main.py` must be sync.
+
 ## Testing
 
 ```bash
