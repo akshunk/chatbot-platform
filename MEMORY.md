@@ -30,13 +30,16 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 7. Added `core/personality/registry.py` — resolves personality names to directories via `config/personality.yaml`
 8. Wired personality selection into Gradio UI via `additional_inputs` with open accordion
 9. System prompt from selected personality injected as `system` role message on every turn
+10. Added **per-personality model selection** — each personality specifies its own Ollama model in `config/personality.yaml`, `registry.py` exposes `get_personality_model()`, Gradio uses it at runtime
+11. Switched Companion to `dolphin-llama3:8b` (uncensored, better for explicit content). Nova/Standard remain on `llama3.2:3b`
 
 ## Personality System
-| Name | Key | Directory | Description |
-|------|-----|-----------|-------------|
-| Nova | `default` | `core/personality/` | Unfiltered, direct, intelligent assistant (uncensored) |
-| Standard | `standard` | `core/personality/standard/` | Helpful, harmless, honest — ChatGPT-style with safety guidelines |
-| Nova (Experimental) | `experimental` | `experiments/personalities/experimental/` | Empty (placeholder) |
+| Name | Key | Directory | Description | Model |
+|------|-----|-----------|-------------|-------|
+| Nova | `default` | `core/personality/` | Unfiltered, direct, intelligent assistant (uncensored) | `llama3.2:3b` |
+| Standard | `standard` | `core/personality/standard/` | Helpful, harmless, honest — ChatGPT-style with safety guidelines | `llama3.2:3b` |
+| Companion | `nsfw` | `core/personality/nsfw/` | Uncensored adult companion, sexually open, direct | `dolphin-llama3:8b` |
+| Nova (Experimental) | `experimental` | `experiments/personalities/experimental/` | Empty (placeholder) | `llama3.2:3b` |
 
 ## Running Services
 | Service | Port | How to start |
@@ -53,9 +56,9 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 ## Important Files
 - `/workspace/chatbot-platform/apps/ollama-chat/main.py` — Gradio chat app
 - `/workspace/chatbot-platform/apps/ollama-chat/test_main.py` — Tests (15 tests)
-- `/workspace/chatbot-platform/core/personality/registry.py` — Name→dir resolver
+- `/workspace/chatbot-platform/core/personality/registry.py` — Name→dir resolver, `get_personality_model()`
+- `/workspace/chatbot-platform/config/personality.yaml` — Personality definitions with model per personality
 - `/workspace/chatbot-platform/core/personality/standard/` — Safe persona files
-- `/workspace/chatbot-platform/config/personality.yaml` — Personality definitions
 - `/tmp/gradio_chat.py` — Active running copy (may differ from repo)
 - `/tmp/tunnel.url` — Current tunnel URL
 
@@ -67,7 +70,7 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 
 ## Troubleshooting
 - If Gradio crashes: `fuser -k 7860/tcp && python3 apps/ollama-chat/main.py`
-- If Ollama model not found: use `llama3.2:3b` (with tag)
+- If Ollama model not found: use `llama3.2:3b` (with tag). Companion needs `dolphin-llama3:8b`
 - If tunnel dead: kill old serveo process, start new one with `ssh -R 80:localhost:7860 serveo.net`
 - Run tests: `cd apps/ollama-chat && python3 -m pytest test_main.py -v`
 - Hard refresh (Cmd+Shift+R) if UI looks stale — Gradio caches aggressively

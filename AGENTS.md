@@ -29,11 +29,13 @@ Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serve
 
 ## Personality System
 
-- `config/personality.yaml` defines available personalities with name, display label, directory
-- `core/personality/registry.py` caches the YAML; `list_personalities()` returns list for UI, `get_personality_dir(name)` returns the directory
+- `config/personality.yaml` defines available personalities with name, display label, directory, model name, and parameters
+- `core/personality/registry.py` caches the YAML; `list_personalities()` returns list for UI (with model), `get_personality_dir(name)` returns the directory, `get_personality_model(name)` returns the Ollama model name
 - `core/personality/builder.py` — `PersonalityBuilder(dir)` reads identity.md, tone.md, boundaries.md, examples.md → system prompt
 - Each personality is a subdirectory under `core/personality/` with those 4 files
 - The Gradio app injects the system prompt as a `system` role message on every turn
+- Each personality specifies its own Ollama model via `model` field in config (default: `llama3.2:3b`, companion uses `dolphin-llama3:8b`)
+- The Gradio app reads the per-personality model at chat time, not a hardcoded MODEL variable
 - Personalities: `default` (uncensored Nova), `standard` (safe ChatGPT-style), `experimental` (empty)
 
 ## Testing
