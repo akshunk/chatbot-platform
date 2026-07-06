@@ -86,7 +86,7 @@ demo = gr.ChatInterface(
             allow_custom_value=False,
         ),
     ],
-    additional_inputs_accordion=gr.Accordion(label="Personality", open=True),
+    additional_inputs_accordion=gr.Accordion(label="Personality", open=False),
     title="Nova",
     description="Conversational AI with selectable personality",
 )
