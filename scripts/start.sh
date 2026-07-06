@@ -19,25 +19,39 @@ trap cleanup EXIT
 echo "=== Chatbot Platform Launcher ==="
 echo ""
 
-# 1. Python deps
+# 1. System dependencies
+echo "[1/6] Checking system dependencies..."
+MISSING=()
+for CMD in ollama autossh ssh curl; do
+  if ! command -v "$CMD" &>/dev/null; then
+    MISSING+=("$CMD")
+  fi
+done
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "  Missing: ${MISSING[*]}"
+  echo "  Install: apt-get install autossh ssh curl  &&  (install ollama from https://ollama.ai)"
+  exit 1
+fi
+
+# 2. Python deps
 REQ_FILE="$PROJECT_DIR/apps/ollama-chat/requirements.txt"
 if [ -f "$REQ_FILE" ]; then
-  echo "[1/5] Checking Python dependencies..."
+  echo "[2/6] Checking Python dependencies..."
   pip install -r "$REQ_FILE" -q 2>/dev/null || pip install -r "$REQ_FILE"
 fi
 
-# 2. Ollama
+# 3. Ollama
 if ! pgrep -x ollama > /dev/null; then
-  echo "[2/5] Starting Ollama..."
+  echo "[3/6] Starting Ollama..."
   ollama serve > /tmp/ollama.log 2>&1 &
   sleep 2
 else
-  echo "[2/5] Ollama already running"
+  echo "[3/6] Ollama already running"
 fi
 
-# 3. Models
+# 4. Models
 MODELS=("llama3.2:3b" "dolphin-llama3:8b")
-echo "[2/5] Checking required models..."
+echo "[4/6] Checking required models..."
 for MODEL in "${MODELS[@]}"; do
   if ! ollama list 2>/dev/null | grep -q "$MODEL"; then
     echo "  Pulling $MODEL (first time — may take a while)..."
@@ -47,8 +61,8 @@ for MODEL in "${MODELS[@]}"; do
   fi
 done
 
-# 4. Gradio
-echo "[3/5] Starting Gradio chat on port $GRADIO_PORT..."
+# 5. Gradio
+echo "[5/6] Starting Gradio chat on port $GRADIO_PORT..."
 pkill -f "main.py" 2>/dev/null || true
 sleep 1
 python3 "$APP" > /tmp/gradio.log 2>&1 &
@@ -61,8 +75,8 @@ for i in $(seq 1 10); do
 done
 echo "  Local:    http://localhost:$GRADIO_PORT"
 
-# 5. Tunnel
-echo "[4/5] Starting SSH tunnel via $TUNNEL_SERVICE..."
+# 6. Tunnel
+echo "[6/6] Starting SSH tunnel via $TUNNEL_SERVICE..."
 "$SCRIPT_DIR/tunnel.sh" start
 
 echo ""
