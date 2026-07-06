@@ -75,6 +75,10 @@ async def chat(message, history, personality_name):
 personalities_list = list_personalities()
 personality_choices = [(f"{p['label']} ({p['name']}) — {p['description']} [{p['model']}]", p["name"]) for p in personalities_list]
 
+css = """
+footer { position: sticky !important; bottom: 0 !important; }
+.wrap { min-height: 0 !important; }
+"""
 demo = gr.ChatInterface(
     chat,
     additional_inputs=[
@@ -89,6 +93,7 @@ demo = gr.ChatInterface(
     additional_inputs_accordion=gr.Accordion(label="Personality", open=False),
     title="Nova",
     description="Conversational AI with selectable personality",
+    css=css,
 )
 
 if __name__ == "__main__":
