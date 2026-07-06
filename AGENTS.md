@@ -8,26 +8,39 @@ personality control, and uncensored responses.
 ## Key Files
 
 - `core/llm/` - LLM provider abstraction (Ollama, OpenAI, Groq, OpenRouter)
-- `core/personality/` - Chatbot identity, tone, boundaries
+- `core/personality/` - Personality definitions (subdirs: `standard/`, plus files at root for default)
+- `core/personality/registry.py` - `get_personality_dir(name)`, `list_personalities()` — resolves names→dirs via `config/personality.yaml`
 - `core/prompts/` - Prompt templates and assembly
 - `core/chat/` - Conversation lifecycle management
 - `apps/api/` - FastAPI backend
 - `apps/web/` - Next.js frontend
 - `apps/ollama-chat/` - Standalone Gradio chat app (direct to Ollama, used as production frontend)
-- `config/` - YAML configuration files
+- `config/personality.yaml` - Personality registry (name → directory mapping)
 - `data/` - Conversations, feedback, logs
 
-## Running
+## Running (Active Frontend)
 
 ```bash
-# Start API
-uvicorn apps.api.main:app --reload --port 8000
+cd apps/ollama-chat
+python3 main.py          # Gradio on port 7860
+```
 
-# Start Web (in apps/web/)
-npm run dev
+Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serveo.net`.
 
-# With Docker
-docker compose up
+## Personality System
+
+- `config/personality.yaml` defines available personalities with name, display label, directory
+- `core/personality/registry.py` caches the YAML; `list_personalities()` returns list for UI, `get_personality_dir(name)` returns the directory
+- `core/personality/builder.py` — `PersonalityBuilder(dir)` reads identity.md, tone.md, boundaries.md, examples.md → system prompt
+- Each personality is a subdirectory under `core/personality/` with those 4 files
+- The Gradio app injects the system prompt as a `system` role message on every turn
+- Personalities: `default` (uncensored Nova), `standard` (safe ChatGPT-style), `experimental` (empty)
+
+## Testing
+
+```bash
+cd apps/ollama-chat && python3 -m pytest test_main.py -v   # 15 tests
+cd /workspace/chatbot-platform && python3 -m pytest apps/ollama-chat/test_main.py -v
 ```
 
 ## Architecture
