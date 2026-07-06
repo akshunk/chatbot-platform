@@ -13,6 +13,7 @@ personality control, and uncensored responses.
 - `core/chat/` - Conversation lifecycle management
 - `apps/api/` - FastAPI backend
 - `apps/web/` - Next.js frontend
+- `apps/ollama-chat/` - Standalone Gradio chat app (direct to Ollama, used as production frontend)
 - `config/` - YAML configuration files
 - `data/` - Conversations, feedback, logs
 
