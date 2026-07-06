@@ -22,7 +22,7 @@ def _load_config(config_path: Optional[Path] = None) -> dict:
 
 
 def list_personalities() -> list[dict]:
-    """Return a list of {name, label, description} for UI dropdowns."""
+    """Return a list of {name, label, description, model} for UI dropdowns."""
     config = _load_config()
     result = []
     for name, entry in config.items():
@@ -30,8 +30,18 @@ def list_personalities() -> list[dict]:
             "name": name,
             "label": entry.get("name", name),
             "description": entry.get("description", ""),
+            "model": entry.get("model", "llama3.2:3b"),
         })
     return result
+
+
+def get_personality_model(name: str, config_path: Optional[Path] = None) -> str:
+    """Get the model name for a personality."""
+    config = _load_config(config_path)
+    entry = config.get(name)
+    if entry is None:
+        raise KeyError(f"Unknown personality: {name!r}")
+    return entry.get("model", "llama3.2:3b")
 
 
 def get_personality_dir(name: str, config_path: Optional[Path] = None) -> Path:

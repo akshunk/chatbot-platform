@@ -7,10 +7,9 @@ import gradio as gr
 import httpx
 import json
 
-from core.personality import PersonalityBuilder, get_personality_dir, list_personalities
+from core.personality import PersonalityBuilder, get_personality_dir, get_personality_model, list_personalities
 
 OLLAMA_URL = "http://127.0.0.1:11434"
-MODEL = "llama3.2:3b"
 
 
 def to_str(v):
@@ -47,9 +46,10 @@ def build_messages(message, history, personality_name: str):
 
 async def chat(message, history, personality_name):
     messages = build_messages(message, history, personality_name)
+    model = get_personality_model(personality_name)
 
     payload = {
-        "model": MODEL,
+        "model": model,
         "messages": messages,
         "stream": True,
     }
@@ -73,7 +73,7 @@ async def chat(message, history, personality_name):
 
 
 personalities_list = list_personalities()
-personality_choices = [(f"{p['label']} ({p['name']}) — {p['description']}", p["name"]) for p in personalities_list]
+personality_choices = [(f"{p['label']} ({p['name']}) — {p['description']} [{p['model']}]", p["name"]) for p in personalities_list]
 
 demo = gr.ChatInterface(
     chat,
