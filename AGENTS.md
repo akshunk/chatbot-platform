@@ -46,7 +46,7 @@ Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serve
 
 ## Services & Scripts
 
-- `scripts/start.sh` — Single launcher: checks/starts Ollama, pulls model if needed, starts Gradio on 7860, starts autossh tunnel via serveo.net. Ctrl+C stops all.
+- `scripts/start.sh` — Single launcher: checks/starts Ollama, pulls both models (`llama3.2:3b` + `dolphin-llama3:8b`) if missing, starts Gradio on 7860, starts autossh tunnel via serveo.net. Ctrl+C stops all.
 - `scripts/tunnel.sh` — Manages SSH tunnel (start/stop/status). Uses autossh for auto-reconnect. Saves URL to `/tmp/tunnel.url`.
 
 ## Tunnel & iPhone Access
@@ -61,10 +61,13 @@ Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serve
 ## First-Time UI Setup
 
 ```bash
-pip install gradio httpx pyyaml          # deps (once)
-ollama pull llama3.2:3b                    # default model (once, ~2GB)
-./scripts/start.sh                         # start everything
+pip install -r apps/ollama-chat/requirements.txt   # deps (once)
+ollama pull llama3.2:3b                            # default model (once, ~2GB)
+ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7GB)
+./scripts/start.sh                                 # start everything
 ```
+
+`scripts/start.sh` auto-checks and pulls any missing models on startup.
 
 ## Testing
 
