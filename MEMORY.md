@@ -32,6 +32,11 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 9. System prompt from selected personality injected as `system` role message on every turn
 10. Added **per-personality model selection** — each personality specifies its own Ollama model in `config/personality.yaml`, `registry.py` exposes `get_personality_model()`, Gradio uses it at runtime
 11. Switched Companion to `dolphin-llama3:8b` (uncensored, better for explicit content). Nova/Standard remain on `llama3.2:3b`
+12. Added `_warm_models()` to pre-load both models at startup so first chat doesn't stall 12s+ waiting for cold model load
+13. Wrapped `chat()` in `try/except` so Ollama errors show an error message instead of crashing the generator silently
+14. Pinned Gradio to `<6.19` (downgraded from 6.19 to 6.18) to avoid Starlette 1.3.1 deprecation conflict
+15. Rewrote `scripts/start.sh`: removed `set -euo pipefail`, removed `trap cleanup EXIT`, uses `nohup` for process isolation, increased Gradio wait loop to 60s
+16. Rewrote `scripts/tunnel.sh`: switched from autossh to plain `nohup ssh`, increased URL wait timeout to 120s, added PID health check
 
 ## Personality System
 | Name | Key | Directory | Description | Model |
@@ -166,6 +171,23 @@ cd /workspace/chatbot-platform && ./scripts/start.sh
 - **Bug**: `async def chat()` with `yield` in Gradio 6.19 ChatInterface caused page to refresh on message send instead of streaming response.
 - **Root cause**: Gradio 6.x doesn't properly handle async generators — it hangs and reloads the UI.
 - **Fix**: Changed `chat()` to a synchronous generator (`def` instead of `async def`) using `httpx.Client` instead of `httpx.AsyncClient`. All 15 tests pass.
+
+### Page refresh from cold model load (even after sync fix)
+- **Bug**: First chat still refreshed the page because the 8B model took 12s+ to load, blocking the first `yield` long enough to timeout the frontend websocket.
+- **Fix**: Added `_warm_models()` at startup to pre-load both models before serving requests.
+
+### Gradio crash on Ollama error
+- **Bug**: Any exception in `chat()` (Ollama timeout, connection refused, etc.) propagated unhandled and crashed the generator, killing the websocket.
+- **Fix**: Wrapped the Ollama call in `try/except` to yield an error message instead of crashing.
+
+### Gradio 6.19 + Starlette deprecation
+- **Bug**: Starlette 1.3.1 deprecated `HTTP_422_UNPROCESSABLE_ENTITY`; Gradio 6.19 still uses it, causing warnings and possible instability.
+- **Fix**: Pinned `gradio<6.19` in `requirements.txt`.
+
+### Startup script fragility
+- **Bug**: `scripts/start.sh` used `set -euo pipefail` (any failure aborted everything), `trap cleanup EXIT` (Ctrl+C killed all services), and only 10s wait for Gradio.
+- **Bug**: `scripts/tunnel.sh` used autossh (not always installed), only 60s timeout, no PID health check.
+- **Fix**: Rewrote both scripts — removed strict error handling, used `nohup` for process isolation, 60s Gradio wait, 120s tunnel wait, added health checks.
 
 ## Troubleshooting
 - If Gradio crashes: `fuser -k 7860/tcp && python3 apps/ollama-chat/main.py`

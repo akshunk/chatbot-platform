@@ -46,8 +46,8 @@ Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serve
 
 ## Services & Scripts
 
-- `scripts/start.sh` — Single launcher: checks system deps (ollama, autossh, curl), installs Python deps from `requirements.txt`, checks/starts Ollama, pulls both models if missing, starts Gradio on 7860, starts autossh tunnel via serveo.net. Ctrl+C stops all.
-- `scripts/tunnel.sh` — Manages SSH tunnel (start/stop/status). Uses autossh for auto-reconnect. Saves URL to `/tmp/tunnel.url`.
+- `scripts/start.sh` — Single launcher: checks system deps, installs Python deps, checks/starts Ollama, pulls both models if missing, starts Gradio on 7860, starts SSH tunnel via serveo.net. Services are isolated (won't die on script exit).
+- `scripts/tunnel.sh` — Manages SSH tunnel (start/stop/status). Uses plain `nohup ssh` (not autossh). Saves URL to `/tmp/tunnel.url`.
 
 ## Tunnel & iPhone Access
 
@@ -62,7 +62,7 @@ Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serve
 
 ### System dependencies (one-time)
 ```bash
-apt-get install autossh curl       # tunnel & health checks
+apt-get install curl               # health checks
 # Ollama: install from https://ollama.ai or run the binary
 ```
 
@@ -81,6 +81,11 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 ### Chat page refreshes instead of responding
 - **Cause**: `async def` generator functions don't work with Gradio 6.x ChatInterface — the page reloads instead of streaming.
 - **Fix**: Use a synchronous generator (`def` not `async def`) with `httpx.Client` (not `AsyncClient`). The `chat()` function in `apps/ollama-chat/main.py` must be sync.
+- **Additional fix**: Cold model load (12s+ for 8B model) causes first `yield` to stall, timing out the frontend websocket. `_warm_models()` pre-loads all models at startup.
+- **Error resilience**: `try/except` wrapper around the Ollama call prevents unhandled exceptions from crashing the generator.
+
+### Gradio version compatibility
+- Gradio 6.19 has a Starlette 1.3.1 deprecation conflict. Pinned to `<6.19` in `requirements.txt`.
 
 ## Testing
 

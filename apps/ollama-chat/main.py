@@ -44,7 +44,7 @@ def build_messages(message, history, personality_name: str):
     return msgs + build_chat_messages(message, history)
 
 
-async def chat(message, history, personality_name):
+def chat(message, history, personality_name):
     messages = build_messages(message, history, personality_name)
     model = get_personality_model(personality_name)
 
@@ -54,22 +54,24 @@ async def chat(message, history, personality_name):
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        async with client.stream("POST", f"{OLLAMA_URL}/api/chat", json=payload) as resp:
-            if resp.status_code != 200:
-                error_body = await resp.aread()
-                yield f"Error {resp.status_code}: {error_body.decode()[:200]}"
-                return
-            full = ""
-            async for line in resp.aiter_lines():
-                if not line:
-                    continue
-                data = json.loads(line)
-                if data.get("done"):
-                    break
-                if "message" in data and "content" in data["message"]:
-                    full += data["message"]["content"]
-                    yield full
+    full = ""
+    try:
+        with httpx.Client(timeout=120) as client:
+            with client.stream("POST", f"{OLLAMA_URL}/api/chat", json=payload) as resp:
+                if resp.status_code != 200:
+                    yield f"Error {resp.status_code}: {resp.read()[:200]}"
+                    return
+                for line in resp.iter_lines():
+                    if not line:
+                        continue
+                    data = json.loads(line)
+                    if data.get("done"):
+                        break
+                    if "message" in data and "content" in data["message"]:
+                        full += data["message"]["content"]
+                        yield full
+    except Exception as e:
+        yield f"Error: {e}"
 
 
 personalities_list = list_personalities()
@@ -91,5 +93,23 @@ demo = gr.ChatInterface(
     description="Conversational AI with selectable personality",
 )
 
+def _warm_models():
+    """Pre-warm all personality models so first chat request doesn't stall on cold load."""
+    models = set()
+    for p in personalities_list:
+        models.add(p["model"])
+    with httpx.Client(timeout=120) as client:
+        for model in sorted(models):
+            try:
+                client.post(
+                    f"{OLLAMA_URL}/api/generate",
+                    json={"model": model, "prompt": "", "stream": False, "keep_alive": "5m"},
+                    timeout=30,
+                )
+            except Exception:
+                pass  # non-critical; will load on demand
+
+
 if __name__ == "__main__":
+    _warm_models()
     demo.launch(server_name="0.0.0.0", server_port=7860)
