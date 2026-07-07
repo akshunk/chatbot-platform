@@ -3,6 +3,8 @@ import sys
 
 sys.path.insert(0, "/workspace/chatbot-platform")
 
+import os
+import time
 import gradio as gr
 import httpx
 import json
@@ -213,7 +215,13 @@ def chat(message, history, personality_name):
 
         status, value = result
         if status == "ok":
-            yield f"{clean_text}\n\n[📷 View Image](/gradio_api/file={value})"
+            # Wait a moment for the file to be flushed to disk
+            for _ in range(10):
+                if os.path.exists(value):
+                    break
+                time.sleep(0.5)
+            filename = os.path.basename(value)
+            yield f"{clean_text}\n\n[📷 View Image](/i/{filename})"
         else:
             yield f"{clean_text}\n\n[Image generation failed: {value}]"
     else:
@@ -260,4 +268,22 @@ def _warm_models():
 
 if __name__ == "__main__":
     threading.Thread(target=_warm_models, daemon=True).start()
-    demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace/ComfyUI/output"])
+    demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace/ComfyUI/output"], prevent_thread_lock=True)
+
+    from fastapi.responses import Response
+    import httpx as httpx_module
+
+    @demo.app.get("/i/{filename:path}")
+    async def proxy_image(filename: str):
+        path = f"/workspace/ComfyUI/output/{filename}"
+        if os.path.exists(path):
+            return Response(content=open(path, "rb").read(), media_type="image/png")
+        async with httpx_module.AsyncClient(timeout=10) as c:
+            r = await c.get(f"http://127.0.0.1:8188/view?filename={filename}&type=output&subfolder=")
+            if r.status_code == 200:
+                return Response(content=r.content, media_type=r.headers.get("content-type", "image/png"))
+            from fastapi.responses import HTMLResponse
+            return HTMLResponse(f"Image not found: {filename}", status_code=404)
+
+    while True:
+        time.sleep(3600)
