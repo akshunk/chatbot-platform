@@ -91,13 +91,20 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 ## Image Generation
 
 - ComfyUI runs on port 8188 (started by `scripts/start.sh` or manually in tmux)
-- Model: Juggernaut XL v9 (`Juggernaut-XL-v9.safetensors`, 6.9GB, photorealistic + NSFW)
+- Model: RealVisXL V4.0 (`RealVisXL_V4.0.safetensors`, 6.6GB, photorealistic)
+- Fallback: Juggernaut XL v9 (`Juggernaut-XL-v9.safetensors`, 6.9GB)
 - LLM triggers image gen via `<gen>description</gen>` tags in response
 - `core/imagegen/workflow.py` builds txt2img workflow JSON
 - `core/imagegen/client.py` — `generate_image(prompt)` calls ComfyUI API, polls for result, returns image path
-- `enhance_prompt()` prefixes pony quality tags to prompts
+- `enhance_prompt()` wraps prompt with `RAW photo, ` prefix + `, professional photography, natural lighting, sharp focus, highly detailed, 8K, shot on professional camera` suffix
 - Images saved to `ComfyUI/output/`
 - Gradio `launch()` must include `allowed_paths=["/workspace/ComfyUI/output"]` to serve image files
+
+### Safety Filter
+`is_safe_prompt()` in `apps/ollama-chat/main.py` checks gen tag prompts for:
+- Animal keywords + explicit keywords → blocked
+- Child/minor keywords + explicit/violent keywords → blocked
+Returns error message instead of generating. Also: all 4 system prompt files include absolute boundaries.
 
 ## Testing
 

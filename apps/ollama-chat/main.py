@@ -16,6 +16,87 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 GEN_TAG = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
 GEN_INTENT = re.compile(r'(?:generate|create|make|draw|render|produce)\s+(?:(?:a|an|the)\s+)?(?:image|photo|picture|render|drawing|art)', re.IGNORECASE)
 
+ANIMAL_KEYWORDS = {
+    "deer", "dog", "cat", "horse", "bird", "rabbit", "wolf", "bunny", "puppy", "kitten",
+    "animal", "animals", "lion", "tiger", "bear", "fox", "elephant", "monkey", "ape",
+    "gorilla", "zebra", "giraffe", "panda", "koala", "kangaroo", "owl", "eagle", "hawk",
+    "fish", "shark", "whale", "dolphin", "seal", "pig", "cow", "sheep", "goat", "duck",
+    "chicken", "frog", "snake", "lizard", "turtle", "mouse", "rat", "hamster", "parrot",
+    "swan", "goose", "butterfly", "bat", "squirrel", "beaver", "otter", "moose", "elk",
+    "bison", "rhino", "hippo", "gator", "crocodile", "alligator", "cheetah", "leopard",
+    "panther", "jaguar", "cougar", "puma", "lynx", "bobcat", "hyena", "coyote", "dingo",
+    "ferret", "meerkat", "warthog", "boar", "hog", "sloth", "tapir", "capybara", "marmot",
+    "hedgehog", "platypus", "wombat", "possum", "penguin", "seagull", "crow", "raven",
+    "sparrow", "robin", "pigeon", "dove", "falcon", "hawk", "buzzard", "vulture", "stork",
+    "heron", "crane", "pelican", "flamingo", "parrot", "macaw", "cockatoo", "finch",
+    "canary", "budgie", "parakeet", "lovebird", "hummingbird", "woodpecker", "kingfisher",
+    "kookaburra", "rooster", "hen", "turkey", "peacock", "pheasant", "quail", "emu",
+    "ostrich", "kiwi", "puffin", "albatross", "gull", "tern", "swallow", "swift",
+    "goldfish", "koi", "betta", "guppy", "molly", "tetra", "cichlid", "angelfish",
+    "clownfish", "tang", "damsel", "wrasse", "bass", "trout", "salmon", "tuna", "cod",
+    "halibut", "flounder", "catfish", "eel", "stingray", "manta ray", "jellyfish",
+    "octopus", "squid", "cuttlefish", "starfish", "sea horse", "sea urchin", "coral",
+    "anemone", "lobster", "crab", "shrimp", "prawn", "crayfish", "mussel", "clam",
+    "oyster", "scallop", "snail", "slug", "worm", "leech", "centipede", "millipede",
+    "spider", "scorpion", "tick", "mite", "ant", "bee", "wasp", "hornet", "termite",
+    "cockroach", "beetle", "ladybug", "firefly", "dragonfly", "damselfly", "grasshopper",
+    "cricket", "locust", "cicada", "aphid", "mantis", "mosquito", "fly", "moth",
+    "caterpillar", "butterfly", "larva", "pupa", "chrysalis",
+}
+
+HARMFUL_KEYWORDS = {
+    "child", "minor", "underage", "kid", "baby", "infant", "toddler", "teen", "teenager",
+    "girl", "boy", "young", "childhood",
+}
+
+VIOLENT_KEYWORDS = {
+    "gore", "blood", "bloody", "violence", "violent", "torture", "murder", "kill",
+    "killing", "death", "dead body", "corpse", "dismember", "mutilate", "mutilation",
+    "execution", "beheading", "decapitation", "crucifixion", "burning alive",
+    "suffocation", "strangulation", "stab", "stabbing", "shoot", "shooting",
+    "gunshot", "wound", "injury", "injured", "surgery", "operation", "medical procedure",
+    "autopsy", "dissection", "open wound", "flesh wound", "exposed muscle",
+    "skeleton", "skull", "bones", "broken bone", "fracture",
+}
+
+EXPLICIT_KEYWORDS = {
+    "naked", "nude", "explicit", "erotic", "nsfw", "sex", "sexual", "penis", "vagina",
+    "breasts", "nipples", "genitals", "pussy", "dick", "cock", "cum", "semen",
+    "ejaculate", "orgasm", "climax", "fuck", "suck", "blowjob", "handjob",
+    "fingering", "penetration", "intercourse", "foreplay", "masturbate",
+    "masturbation", "striptease", "lingerie", "thong", "g-string", "dildo",
+    "vibrator", "anal", "oral", "vaginal", "bondage", "bdsm", "domination",
+    "submission", "fetish", "kink", "hardcore", "porn", "pornographic", "lewd",
+    "seductive", "provocative", "sultry", "sensual", "intimate", "caress",
+    "fondle", "lick", "moan", "thrust", "horny", "aroused", "lust", "lustful",
+    "passion", "passionate", "nakedness", "nudity", "bare", "exposed",
+    "revealing", "scantily", "topless", "bottomless", "undress", "undressed",
+    "stripped", "stripping",
+}
+
+
+def is_safe_prompt(prompt: str) -> tuple[bool, str | None]:
+    lower = prompt.lower()
+    words = set(lower.replace(",", "").replace(".", "").split())
+
+    # Block: child/minor + explicit or violent
+    if words & HARMFUL_KEYWORDS:
+        if words & EXPLICIT_KEYWORDS or words & VIOLENT_KEYWORDS:
+            return False, "Cannot generate images involving minors in explicit or violent contexts."
+
+    # Block: animal + explicit
+    if words & ANIMAL_KEYWORDS and words & EXPLICIT_KEYWORDS:
+        return False, "Cannot generate explicit images of animals."
+
+    # Block: any occurrence of harmful child keywords
+    child_explicit = {"child", "minor", "underage", "kid", "baby", "infant", "toddler"}
+    if lower.startswith("photograph of a ") or lower.startswith("photo of a "):
+        first_word = lower.split()[-1] if len(lower.split()) <= 5 else ""
+        if words & child_explicit and (words & EXPLICIT_KEYWORDS or words & VIOLENT_KEYWORDS):
+            return False, "Cannot generate images involving minors in explicit or violent contexts."
+
+    return True, None
+
 
 def has_image_intent(message: str) -> bool:
     return bool(GEN_INTENT.search(message))
@@ -99,6 +180,13 @@ def chat(message, history, personality_name):
         clean_text = re.sub(r'^(assistant|nova|ai)\s*[:\-]?\s*', '', clean_text, flags=re.IGNORECASE).strip()
         if not clean_text:
             clean_text = "Here is your generated image."
+
+        # Safety filter
+        safe, reason = is_safe_prompt(prompt)
+        if not safe:
+            yield f"{reason}"
+            return
+
         enhanced = enhance_prompt(prompt)
         try:
             image_path = generate_image(enhanced, negative_prompt=DEFAULT_NEGATIVE)

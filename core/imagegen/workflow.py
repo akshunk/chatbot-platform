@@ -1,7 +1,7 @@
 import random
 
-MODEL_NAME = "Juggernaut-XL-v9.safetensors"
-DEFAULT_NEGATIVE = "(cartoon:1.4), (anime:1.4), (illustration:1.3), (painting:1.3), (drawing:1.3), (digital art:1.3), (3d render:1.3), (cgi:1.3), worst quality, low quality, distorted, blurry, bad anatomy, watermark, text, signature, extra limbs, fused limbs, bad hands, bad feet, ugly, lowres"
+MODEL_NAME = "RealVisXL_V4.0.safetensors"
+DEFAULT_NEGATIVE = "(cartoon:1.5), (anime:1.5), (illustration:1.4), (painting:1.4), (drawing:1.4), (digital art:1.4), (3d render:1.4), (cgi:1.4), worst quality, low quality, distorted, blurry, bad anatomy, watermark, text, signature, extra limbs, fused limbs, bad hands, bad feet, ugly, lowres, monochrome, grayscale, simplistic, abstract, sketch, lineart, concept art"
 
 
 def create_txt2img_workflow(

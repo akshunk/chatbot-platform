@@ -11,12 +11,13 @@ OUTPUT_DIR = Path("/workspace/ComfyUI/output")
 POLL_INTERVAL = 1.0
 TIMEOUT = 120
 
-REALISTIC_PREFIX = "(photorealistic:1.4), raw photo, (masterpiece:1.2), highly detailed, sharp focus, 8k, "
+REALISTIC_PREFIX = "RAW photo, "
+REALISTIC_SUFFIX = ", professional photography, natural lighting, sharp focus, highly detailed, 8K, shot on professional camera"
 IMG_PATTERN = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
 
 
 def enhance_prompt(user_prompt: str) -> str:
-    return REALISTIC_PREFIX + user_prompt
+    return REALISTIC_PREFIX + user_prompt + REALISTIC_SUFFIX
 
 
 def generate_image(prompt: str, negative_prompt: str | None = None) -> str:
