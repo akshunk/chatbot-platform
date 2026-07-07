@@ -103,7 +103,7 @@ def chat(message, history, personality_name):
             yield {
                 "content": [
                     {"type": "text", "text": clean_text},
-                    {"type": "file", "file": {"path": image_path}},
+                    {"path": image_path},
                 ]
             }
         except Exception as e:
