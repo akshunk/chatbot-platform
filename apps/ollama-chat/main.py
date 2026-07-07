@@ -181,6 +181,9 @@ def chat(message, history, personality_name):
         if not clean_text:
             clean_text = "Here is your generated image."
 
+        # Yield text immediately so the SSE connection stays alive
+        yield clean_text + "\n\n*Generating image...*"
+
         # Safety filter
         safe, reason = is_safe_prompt(prompt)
         if not safe:
@@ -238,4 +241,5 @@ def _warm_models():
 if __name__ == "__main__":
     import threading
     threading.Thread(target=_warm_models, daemon=True).start()
+    demo.queue(default_concurrency_limit=5)
     demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace/ComfyUI/output"])
