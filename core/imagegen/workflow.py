@@ -1,7 +1,7 @@
 import random
 
 MODEL_NAME = "Juggernaut-XL-v9.safetensors"
-DEFAULT_NEGATIVE = "cartoon, anime, illustration, painting, drawing, digital art, 3d render, cgi, worst quality, low quality, distorted, blurry, bad anatomy, watermark, text, signature, extra limbs, fused limbs, bad hands, bad feet, ugly, lowres"
+DEFAULT_NEGATIVE = "(cartoon:1.4), (anime:1.4), (illustration:1.3), (painting:1.3), (drawing:1.3), (digital art:1.3), (3d render:1.3), (cgi:1.3), worst quality, low quality, distorted, blurry, bad anatomy, watermark, text, signature, extra limbs, fused limbs, bad hands, bad feet, ugly, lowres"
 
 
 def create_txt2img_workflow(

@@ -10,6 +10,7 @@ import re
 
 from core.personality import PersonalityBuilder, get_personality_dir, get_personality_model, list_personalities
 from core.imagegen.client import generate_image, enhance_prompt
+from core.imagegen.workflow import DEFAULT_NEGATIVE
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 GEN_TAG = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
@@ -49,18 +50,17 @@ def build_messages(message, history, personality_name: str):
     system_prompt = builder.build_system_prompt()
     if system_prompt:
         msgs.append({"role": "system", "content": system_prompt})
+    if has_image_intent(message):
+        msgs.append({
+            "role": "system",
+            "content": "The user wants to generate an image. Output a short comma-separated prompt in <gen> tags. Start with 'photograph of' or 'photo of'. Use keywords, not prose. Under 30 words. Example: <gen>photograph of a woman, soft window lighting, detailed skin, shallow depth of field, candid expression, 8k</gen>"
+        })
     return msgs + build_chat_messages(message, history)
 
 
 def chat(message, history, personality_name):
     messages = build_messages(message, history, personality_name)
     model = get_personality_model(personality_name)
-
-    if has_image_intent(message):
-        messages.append({
-            "role": "system",
-            "content": "The user wants to generate an image. Describe the scene as a photograph in <gen> tags. Start with 'photograph of' or 'photo of'. Include camera framing, lighting, skin texture. Example: <gen>photograph of a woman, soft window lighting, detailed skin texture, shallow depth of field, candid expression</gen>"
-        })
 
     payload = {
         "model": model,
@@ -95,11 +95,13 @@ def chat(message, history, personality_name):
     if img_match:
         prompt = img_match.group(1).strip()
         clean_text = re.sub(r'\s+', ' ', GEN_TAG.sub("", full)).strip()
+        # Strip common role prefixes the LLM sometimes outputs
+        clean_text = re.sub(r'^(assistant|nova|ai)\s*[:\-]?\s*', '', clean_text, flags=re.IGNORECASE).strip()
         if not clean_text:
             clean_text = "Here is your generated image."
         enhanced = enhance_prompt(prompt)
         try:
-            image_path = generate_image(enhanced)
+            image_path = generate_image(enhanced, negative_prompt=DEFAULT_NEGATIVE)
             yield f"{clean_text}\n\n<img src=\"/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
         except Exception as e:
             yield f"{clean_text}\n\n[Image generation failed: {e}]"

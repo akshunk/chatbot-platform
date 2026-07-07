@@ -11,7 +11,7 @@ OUTPUT_DIR = Path("/workspace/ComfyUI/output")
 POLL_INTERVAL = 1.0
 TIMEOUT = 120
 
-REALISTIC_PREFIX = "photograph, realistic, detailed skin texture, natural lighting, depth of field, sharp focus, 8k uhd, "
+REALISTIC_PREFIX = "(photorealistic:1.4), raw photo, (masterpiece:1.2), highly detailed, sharp focus, 8k, "
 IMG_PATTERN = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
 
 
