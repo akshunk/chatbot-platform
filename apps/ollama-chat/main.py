@@ -149,10 +149,10 @@ def chat(message, history, personality_name):
         "stream": True,
     }
 
-    # Yield immediately to establish the websocket connection
-    yield ""
-    # Collect the full LLM response before deciding how to render it
+    # Stream the LLM response, filtering <gen> tags from displayed text
     full = ""
+    display_out = ""
+    in_gen_tag = False
     try:
         with httpx.Client(timeout=120) as client:
             with client.stream("POST", f"{OLLAMA_URL}/api/chat", json=payload) as resp:
@@ -166,7 +166,23 @@ def chat(message, history, personality_name):
                     if data.get("done"):
                         break
                     if "message" in data and "content" in data["message"]:
-                        full += data["message"]["content"]
+                        chunk = data["message"]["content"]
+                        full += chunk
+
+                        # Filter out <gen>...</gen> from the displayed stream
+                        for c in chunk:
+                            if c == "<":
+                                in_gen_tag = True
+                            if not in_gen_tag:
+                                display_out += c
+                                if len(display_out) >= 4:
+                                    yield display_out
+                                    display_out = ""
+                            if c == ">":
+                                in_gen_tag = False
+
+        if display_out:
+            yield display_out
     except Exception as e:
         yield f"Error: {e}"
         return
@@ -176,12 +192,10 @@ def chat(message, history, personality_name):
     if img_match:
         prompt = img_match.group(1).strip()
         clean_text = re.sub(r'\s+', ' ', GEN_TAG.sub("", full)).strip()
-        # Strip common role prefixes the LLM sometimes outputs
         clean_text = re.sub(r'^(assistant|nova|ai)\s*[:\-]?\s*', '', clean_text, flags=re.IGNORECASE).strip()
         if not clean_text:
             clean_text = "Here is your generated image."
 
-        # Safety filter
         safe, reason = is_safe_prompt(prompt)
         if not safe:
             yield f"{clean_text}\n\n{reason}"
@@ -193,8 +207,6 @@ def chat(message, history, personality_name):
             yield f"{clean_text}\n\n<img src=\"/gradio_api/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
         except Exception as e:
             yield f"{clean_text}\n\n[Image generation failed: {e}]"
-    else:
-        yield full
 
 
 personalities_list = list_personalities()
