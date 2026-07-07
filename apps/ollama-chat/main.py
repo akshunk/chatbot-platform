@@ -149,10 +149,10 @@ def chat(message, history, personality_name):
         "stream": True,
     }
 
-    # Stream the LLM response, filtering <gen> tags from displayed text
+    # Yield immediately to establish the SSE connection
+    yield ""
+    # Collect the full LLM response
     full = ""
-    display_out = ""
-    in_gen_tag = False
     try:
         with httpx.Client(timeout=120) as client:
             with client.stream("POST", f"{OLLAMA_URL}/api/chat", json=payload) as resp:
@@ -166,23 +166,7 @@ def chat(message, history, personality_name):
                     if data.get("done"):
                         break
                     if "message" in data and "content" in data["message"]:
-                        chunk = data["message"]["content"]
-                        full += chunk
-
-                        # Filter out <gen>...</gen> from the displayed stream
-                        for c in chunk:
-                            if c == "<":
-                                in_gen_tag = True
-                            if not in_gen_tag:
-                                display_out += c
-                                if len(display_out) >= 4:
-                                    yield display_out
-                                    display_out = ""
-                            if c == ">":
-                                in_gen_tag = False
-
-        if display_out:
-            yield display_out
+                        full += data["message"]["content"]
     except Exception as e:
         yield f"Error: {e}"
         return
@@ -207,6 +191,8 @@ def chat(message, history, personality_name):
             yield f"{clean_text}\n\n<img src=\"/gradio_api/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
         except Exception as e:
             yield f"{clean_text}\n\n[Image generation failed: {e}]"
+    else:
+        yield full
 
 
 personalities_list = list_personalities()
