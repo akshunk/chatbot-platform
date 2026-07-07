@@ -11,12 +11,12 @@ OUTPUT_DIR = Path("/workspace/ComfyUI/output")
 POLL_INTERVAL = 1.0
 TIMEOUT = 120
 
-PONY_PREFIX = "score_9, score_8_up, score_7_up, score_6_up, score_5_up, rating_explicit, "
+REALISTIC_PREFIX = "photograph of, realistic, detailed face, intricate skin texture, natural lighting, 8k uhd, "
 IMG_PATTERN = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
 
 
 def enhance_prompt(user_prompt: str) -> str:
-    return PONY_PREFIX + user_prompt
+    return REALISTIC_PREFIX + user_prompt
 
 
 def generate_image(prompt: str, negative_prompt: str | None = None) -> str:

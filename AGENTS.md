@@ -91,7 +91,7 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 ## Image Generation
 
 - ComfyUI runs on port 8188 (started by `scripts/start.sh` or manually in tmux)
-- Model: Pony Diffusion XL v6 (`ponyDiffusionV6XL_v6StartWithThisOne.safetensors`, 6.5GB)
+- Model: Juggernaut XL v9 (`Juggernaut-XL-v9.safetensors`, 6.9GB, photorealistic + NSFW)
 - LLM triggers image gen via `<gen>description</gen>` tags in response
 - `core/imagegen/workflow.py` builds txt2img workflow JSON
 - `core/imagegen/client.py` — `generate_image(prompt)` calls ComfyUI API, polls for result, returns image path
