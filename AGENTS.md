@@ -25,13 +25,14 @@ personality control, and uncensored responses.
 cd /workspace/chatbot-platform && ./scripts/start.sh
 ```
 
-### Manual start
+### Manual start (via tmux — survives shell exit)
 ```bash
-cd apps/ollama-chat
-python3 main.py          # Gradio on port 7860
+tmux new-session -d -s comfyui -c /workspace/ComfyUI '/workspace/ComfyUI/.venv/bin/python3 main.py --listen --port 8188'
+tmux new-session -d -s gradio -c /workspace/chatbot-platform 'python3 apps/ollama-chat/main.py'
+tmux new-session -d -s tunnel 'ssh -o StrictHostKeyChecking=no -R 80:localhost:7860 serveo.net'
 ```
 
-Ollama must be running on port 11434. Tunnel via `ssh -R 80:localhost:7860 serveo.net`.
+Ollama must be running on port 11434. Attach to logs: `tmux attach -t <session>`.
 
 ## Personality System
 
@@ -87,11 +88,22 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 ### Gradio version compatibility
 - Gradio 6.19 has a Starlette 1.3.1 deprecation conflict. Pinned to `<6.19` in `requirements.txt`.
 
+## Image Generation
+
+- ComfyUI runs on port 8188 (started by `scripts/start.sh` or manually in tmux)
+- Model: Pony Diffusion XL v6 (`ponyDiffusionV6XL_v6StartWithThisOne.safetensors`, 6.5GB)
+- LLM triggers image gen via `<gen>description</gen>` tags in response
+- `core/imagegen/workflow.py` builds txt2img workflow JSON
+- `core/imagegen/client.py` — `generate_image(prompt)` calls ComfyUI API, polls for result, returns image path
+- `enhance_prompt()` prefixes pony quality tags to prompts
+- Images saved to `ComfyUI/output/`
+- Gradio `launch()` must include `allowed_paths=["/workspace/ComfyUI/output"]` to serve image files
+
 ## Testing
 
 ```bash
-cd apps/ollama-chat && python3 -m pytest test_main.py -v   # 15 tests
-cd /workspace/chatbot-platform && python3 -m pytest apps/ollama-chat/test_main.py -v
+cd apps/ollama-chat && python3 -m pytest -v   # 32 tests (15 original + 17 image gen)
+cd /workspace/chatbot-platform && python3 -m pytest apps/ollama-chat/ -v
 ```
 
 ## Architecture

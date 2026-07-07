@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 TUNNEL_PORT="${TUNNEL_PORT:-7860}"
+TUNNEL_PORT2="${TUNNEL_PORT2:-8188}"
 TUNNEL_HOST="${TUNNEL_HOST:-serveo.net}"
 LOG_FILE="/tmp/tunnel.log"
 URL_FILE="/tmp/tunnel.url"
@@ -10,25 +11,31 @@ start() {
   # Accept host key first if needed
   ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$TUNNEL_HOST" true 2>/dev/null || true
 
-  # Start tunnel with nohup (not autossh — simpler, fewer moving parts)
-  nohup ssh -o StrictHostKeyChecking=no \
-    -o ExitOnForwardFailure=yes \
-    -o ServerAliveInterval=30 \
-    -o ServerAliveCountMax=3 \
-    -o ConnectTimeout=15 \
-    -R 80:localhost:"$TUNNEL_PORT" \
-    "$TUNNEL_HOST" \
-    > "$LOG_FILE" 2>&1 &
-  SSH_PID=$!
-  echo "$SSH_PID" > /tmp/tunnel.pid
-  echo "  PID: $SSH_PID"
-  echo "  Waiting for URL..."
+  # Start tunnel in tmux session (persistent, independent of shell)
+  tmux kill-session -t tunnel 2>/dev/null || true
+  tmux new-session -d -s tunnel \
+    "ssh -o StrictHostKeyChecking=no \
+      -o ExitOnForwardFailure=yes \
+      -o ServerAliveInterval=30 \
+      -o ServerAliveCountMax=3 \
+      -o ConnectTimeout=15 \
+      -R 80:localhost:\"$TUNNEL_PORT\" \
+      \"$TUNNEL_HOST\" \
+      2>&1 | tee $LOG_FILE"
+  sleep 3
+  echo "  Waiting for URLs..."
 
   for i in $(seq 1 120); do
-    URL=$(grep -oP 'https?://[^\s]+' "$LOG_FILE" 2>/dev/null | grep -v '\.log$' | grep -v 'console.serveo' | head -1)
-    if [ -n "$URL" ]; then
-      echo "$URL" > "$URL_FILE"
-      echo "  Public URL: $URL"
+    URLS=$(grep -oP 'https?://[a-zA-Z0-9.-]+(serveousercontent\.com|lhr\.life|serveo\.net|localhost\.run)[^\s]*' "$LOG_FILE" 2>/dev/null | grep -v 'console\.' | head -3)
+    if [ -n "$URLS" ]; then
+      PRIMARY=$(echo "$URLS" | head -1)
+      echo "  Primary URL (chat):  $PRIMARY"
+      echo "$PRIMARY" > "$URL_FILE"
+      SECONDARY=$(echo "$URLS" | sed -n '2p')
+      if [ -n "$SECONDARY" ]; then
+        echo "  ComfyUI URL:        $SECONDARY"
+        echo "$SECONDARY" > /tmp/tunnel_comfyui.url
+      fi
       return 0
     fi
     # Check if process is still alive
@@ -44,18 +51,15 @@ start() {
 
 stop() {
   echo "Stopping tunnel..."
-  if [ -f /tmp/tunnel.pid ]; then
-    kill "$(cat /tmp/tunnel.pid)" 2>/dev/null || true
-    rm -f /tmp/tunnel.pid
-  fi
+  tmux kill-session -t tunnel 2>/dev/null || true
   pkill -f "ssh.*$TUNNEL_HOST" 2>/dev/null || true
   rm -f "$URL_FILE"
   echo "  Stopped"
 }
 
 status() {
-  if [ -f /tmp/tunnel.pid ] && kill -0 "$(cat /tmp/tunnel.pid)" 2>/dev/null; then
-    echo "Tunnel running (PID: $(cat /tmp/tunnel.pid))"
+  if tmux has-session -t tunnel 2>/dev/null; then
+    echo "Tunnel running"
     if [ -f "$URL_FILE" ]; then
       echo "  URL: $(cat "$URL_FILE")"
     else

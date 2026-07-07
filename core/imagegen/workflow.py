@@ -1,0 +1,80 @@
+import random
+
+MODEL_NAME = "ponyDiffusionV6XL_v6StartWithThisOne.safetensors"
+DEFAULT_NEGATIVE = "worst quality, low quality, distorted, blurry, bad anatomy, watermark, text, signature, extra limbs, fused limbs, bad hands, bad feet, ugly, nsfw, lowres"
+
+
+def create_txt2img_workflow(
+    prompt: str,
+    negative_prompt: str | None = None,
+    width: int = 1024,
+    height: int = 1024,
+    seed: int | None = None,
+    steps: int = 25,
+    cfg: float = 7.0,
+    sampler_name: str = "euler",
+    scheduler: str = "normal",
+    filename_prefix: str = "nova_",
+) -> dict:
+    if seed is None:
+        seed = random.randint(0, 2**32 - 1)
+
+    neg = negative_prompt if negative_prompt else DEFAULT_NEGATIVE
+
+    return {
+        "3": {
+            "class_type": "KSampler",
+            "inputs": {
+                "seed": seed,
+                "steps": steps,
+                "cfg": cfg,
+                "sampler_name": sampler_name,
+                "scheduler": scheduler,
+                "denoise": 1,
+                "model": ["4", 0],
+                "positive": ["6", 0],
+                "negative": ["7", 0],
+                "latent_image": ["5", 0],
+            },
+        },
+        "4": {
+            "class_type": "CheckpointLoaderSimple",
+            "inputs": {"ckpt_name": MODEL_NAME},
+        },
+        "5": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {
+                "width": width,
+                "height": height,
+                "batch_size": 1,
+            },
+        },
+        "6": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+                "text": prompt,
+                "clip": ["4", 1],
+            },
+        },
+        "7": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+                "text": neg,
+                "clip": ["4", 1],
+            },
+        },
+        "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+                "samples": ["3", 0],
+                "vae": ["4", 2],
+            },
+        },
+        "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+                "filename_prefix": filename_prefix,
+                "images": ["8", 0],
+            },
+        },
+    }

@@ -6,10 +6,18 @@ sys.path.insert(0, "/workspace/chatbot-platform")
 import gradio as gr
 import httpx
 import json
+import re
 
 from core.personality import PersonalityBuilder, get_personality_dir, get_personality_model, list_personalities
+from core.imagegen.client import generate_image, enhance_prompt
 
 OLLAMA_URL = "http://127.0.0.1:11434"
+GEN_TAG = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
+GEN_INTENT = re.compile(r'(?:generate|create|make|draw|render|produce)\s+(?:(?:a|an|the)\s+)?(?:image|photo|picture|render|drawing|art)', re.IGNORECASE)
+
+
+def has_image_intent(message: str) -> bool:
+    return bool(GEN_INTENT.search(message))
 
 
 def to_str(v):
@@ -48,12 +56,21 @@ def chat(message, history, personality_name):
     messages = build_messages(message, history, personality_name)
     model = get_personality_model(personality_name)
 
+    if has_image_intent(message):
+        messages.append({
+            "role": "system",
+            "content": "The user wants to generate an image. Provide a detailed visual description in <gen> tags like this: <gen>detailed scene description with pose, lighting, colors, and mood</gen>"
+        })
+
     payload = {
         "model": model,
         "messages": messages,
         "stream": True,
     }
 
+    # Yield immediately to establish the websocket connection
+    yield ""
+    # Collect the full LLM response before deciding how to render it
     full = ""
     try:
         with httpx.Client(timeout=120) as client:
@@ -69,9 +86,30 @@ def chat(message, history, personality_name):
                         break
                     if "message" in data and "content" in data["message"]:
                         full += data["message"]["content"]
-                        yield full
     except Exception as e:
         yield f"Error: {e}"
+        return
+
+    # Check if image generation is needed
+    img_match = GEN_TAG.search(full)
+    if img_match:
+        prompt = img_match.group(1).strip()
+        clean_text = re.sub(r'\s+', ' ', GEN_TAG.sub("", full)).strip()
+        if not clean_text:
+            clean_text = "Here is your generated image."
+        enhanced = enhance_prompt(prompt)
+        try:
+            image_path = generate_image(enhanced)
+            yield {
+                "content": [
+                    {"type": "text", "text": clean_text},
+                    {"type": "file", "file": {"path": image_path}},
+                ]
+            }
+        except Exception as e:
+            yield f"{clean_text}\n\n[Image generation failed: {e}]"
+    else:
+        yield full
 
 
 personalities_list = list_personalities()
@@ -101,15 +139,17 @@ def _warm_models():
     with httpx.Client(timeout=120) as client:
         for model in sorted(models):
             try:
+                print(f"  Warming model: {model}...")
                 client.post(
                     f"{OLLAMA_URL}/api/generate",
                     json={"model": model, "prompt": "", "stream": False, "keep_alive": "5m"},
-                    timeout=30,
+                    timeout=120,
                 )
-            except Exception:
-                pass  # non-critical; will load on demand
+                print(f"  {model} ready")
+            except Exception as e:
+                print(f"  {model} warmup skipped ({e})")
 
 
 if __name__ == "__main__":
     _warm_models()
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace/ComfyUI/output"])

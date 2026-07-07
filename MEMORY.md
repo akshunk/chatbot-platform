@@ -38,6 +38,21 @@ Build a conversational chatbot platform under `/workspace/chatbot-platform/` wit
 15. Rewrote `scripts/start.sh`: removed `set -euo pipefail`, removed `trap cleanup EXIT`, uses `nohup` for process isolation, increased Gradio wait loop to 60s
 16. Rewrote `scripts/tunnel.sh`: switched from autossh to plain `nohup ssh`, increased URL wait timeout to 120s, added PID health check
 
+## Image Generation
+
+Added image generation via ComfyUI + Pony Diffusion XL v6:
+
+- **ComfyUI** at `/workspace/ComfyUI/` with its own venv, running on port 8188
+- **Model**: `ponyDiffusionV6XL_v6StartWithThisOne.safetensors` (6.5GB, SDXL-based, uncensored)
+- **How it works**: The LLM's system prompt tells it to use `![generate](description)` when it wants to create an image. The `chat()` function in `main.py` intercepts this tag, calls ComfyUI API, and returns the generated image.
+- **Pony tags**: Prompts are auto-prefixed with `score_9, score_8_up, score_7_up, score_6_up, score_5_up, rating_explicit,`
+- **New files**: `core/imagegen/workflow.py` (txt2img workflow builder), `core/imagegen/client.py` (ComfyUI HTTP client with polling)
+- **Tests**: 17 tests in `apps/ollama-chat/test_image_gen.py`
+- **First startup**: ComfyUI takes ~120s on first launch (database migration); subsequent starts are ~1s
+- **Image gen time**: ~38s first generation (model load), ~10-20s subsequent (cached)
+- **Output directory**: `/workspace/ComfyUI/output/`
+- **Tunnel**: Both ports 7860 (Gradio) and 8188 (ComfyUI) are forwarded via serveo.net
+
 ## Personality System
 | Name | Key | Directory | Description | Model |
 |------|-----|-----------|-------------|-------|
