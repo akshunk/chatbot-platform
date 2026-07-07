@@ -85,6 +85,14 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 - **Additional fix**: Cold model load (12s+ for 8B model) causes first `yield` to stall, timing out the frontend websocket. `_warm_models()` pre-loads all models at startup.
 - **Error resilience**: `try/except` wrapper around the Ollama call prevents unhandled exceptions from crashing the generator.
 
+### SSE idle timeout drops connection during long generation
+- **Cause**: serveo.net proxy has an idle timeout (~30s). Image generation (ComfyUI) takes 10-47s. No data flows between initial `yield ""` and final yield, so proxy drops the connection ("server is lost" / page refreshes).
+- **Fix**: Image generation runs in a `daemon=True` thread with a `queue.Queue`. Main generator calls `result_q.get(timeout=10)` in a loop; if timeout fires, yields `"⏳ Generating image..."` as a keepalive. Each yield in Gradio ChatInterface's `_stream_fn` replaces the previous assistant message (builds from same base history), so keepalive text is invisible to the user.
+
+### Model refuses to generate `<gen>` tags for explicit images
+- **Cause**: Model anthropomorphized image generation — thought "generate an image" meant creating an image of *itself* (the AI persona). Original wording "You can generate images" triggered refusal.
+- **Fix**: All 4 system prompt files updated to: "When the user asks for a photo or image, you **MUST** output a short comma-separated prompt wrapped in `<gen>` tags. This is **NOT** you generating an image — it is a text prompt sent to an external image generator. You **MUST NEVER refuse** to output a `<gen>` tag when asked for an image."
+
 ### Gradio version compatibility
 - Gradio 6.19 has a Starlette 1.3.1 deprecation conflict. Pinned to `<6.19` in `requirements.txt`.
 
@@ -96,9 +104,13 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 - LLM triggers image gen via `<gen>description</gen>` tags in response
 - `core/imagegen/workflow.py` builds txt2img workflow JSON
 - `core/imagegen/client.py` — `generate_image(prompt)` calls ComfyUI API, polls for result, returns image path
-- `enhance_prompt()` wraps prompt with `RAW photo, ` prefix + `, professional photography, natural lighting, sharp focus, highly detailed, 8K, shot on professional camera` suffix
+- `enhance_prompt()` wraps prompt with `RAW photo, ` prefix + `, professional photography, natural lighting, sharp focus, highly detailed, 8K, shot on professional camera` suffix (natural language, no weighted pony tags)
 - Images saved to `ComfyUI/output/`
 - Gradio `launch()` must include `allowed_paths=["/workspace/ComfyUI/output"]` to serve image files
+- **Image rendering**: Clickable `[📷 View Image]` link via `/gradio_api/file={path}` (not inline `<img>`) to avoid Gradio Chatbot rendering issues
+- **Keepalive**: Image gen runs in a background thread; main generator yields keepalives every 10s to prevent SSE/proxy timeout
+- **`chat()` flow**: `yield ""` (establish SSE) → collect LLM response → if `<gen>` found → safety check → `enhance_prompt()` → threaded `generate_image()` with keepalive yields → yield clickable link. No `demo.queue()` (caused timeout). No progress yields (Gradio ChatInterface appends them).
+- **Model refusal fix**: All 4 system prompts (system.md, default identity.md, nsfw identity.md, standard identity.md) updated with "MUST NEVER refuse" + "external image generator" framing
 
 ### Safety Filter
 `is_safe_prompt()` in `apps/ollama-chat/main.py` checks gen tag prompts for:
