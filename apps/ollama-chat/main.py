@@ -16,7 +16,7 @@ from core.imagegen.workflow import DEFAULT_NEGATIVE
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 GEN_TAG = re.compile(r'<gen>(.+?)</gen>', re.DOTALL)
-GEN_INTENT = re.compile(r'(?:generate|create|make|draw|render|produce)\s+(?:(?:a|an|the)\s+)?(?:image|photo|picture|render|drawing|art)', re.IGNORECASE)
+GEN_INTENT = re.compile(r'(?:generate|create|make|draw|render|produce|show|give)\s+(?:(?:a|an|the|me)\s+)?(?:image|photo|picture|render|drawing|art|naked|nude|sexy|explicit|woman|man|girl|guy)', re.IGNORECASE)
 
 ANIMAL_KEYWORDS = {
     "deer", "dog", "cat", "horse", "bird", "rabbit", "wolf", "bunny", "puppy", "kitten",
