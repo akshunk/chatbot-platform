@@ -213,7 +213,7 @@ def chat(message, history, personality_name):
 
         status, value = result
         if status == "ok":
-            yield f"{clean_text}\n\n<img src=\"/gradio_api/file={value}\" style=\"max-width: 100%; border-radius: 8px;\">"
+            yield f"{clean_text}\n\n[📷 View Image](/gradio_api/file={value})"
         else:
             yield f"{clean_text}\n\n[Image generation failed: {value}]"
     else:
