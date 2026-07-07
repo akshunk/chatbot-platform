@@ -6,7 +6,9 @@ sys.path.insert(0, "/workspace/chatbot-platform")
 import gradio as gr
 import httpx
 import json
+import queue
 import re
+import threading
 
 from core.personality import PersonalityBuilder, get_personality_dir, get_personality_model, list_personalities
 from core.imagegen.client import generate_image, enhance_prompt
@@ -186,11 +188,34 @@ def chat(message, history, personality_name):
             return
 
         enhanced = enhance_prompt(prompt)
-        try:
-            image_path = generate_image(enhanced, negative_prompt=DEFAULT_NEGATIVE)
-            yield f"{clean_text}\n\n<img src=\"/gradio_api/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
-        except Exception as e:
-            yield f"{clean_text}\n\n[Image generation failed: {e}]"
+
+        result_q = queue.Queue()
+        def _gen():
+            try:
+                path = generate_image(enhanced, negative_prompt=DEFAULT_NEGATIVE)
+                result_q.put(("ok", path))
+            except Exception as e:
+                result_q.put(("err", str(e)))
+
+        t = threading.Thread(target=_gen, daemon=True)
+        t.start()
+
+        result = None
+        while t.is_alive():
+            try:
+                result = result_q.get(timeout=10)
+                break
+            except queue.Empty:
+                yield "⏳ Generating image..."
+
+        if result is None:
+            result = result_q.get()
+
+        status, value = result
+        if status == "ok":
+            yield f"{clean_text}\n\n<img src=\"/gradio_api/file={value}\" style=\"max-width: 100%; border-radius: 8px;\">"
+        else:
+            yield f"{clean_text}\n\n[Image generation failed: {value}]"
     else:
         yield full
 
@@ -234,6 +259,5 @@ def _warm_models():
 
 
 if __name__ == "__main__":
-    import threading
     threading.Thread(target=_warm_models, daemon=True).start()
     demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace/ComfyUI/output"])

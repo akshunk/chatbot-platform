@@ -110,10 +110,9 @@ def test_img_pattern_substitution():
 
 def test_enhance_prompt():
     result = enhance_prompt("a cat")
-    assert result.startswith("score_9, score_8_up")
-    assert "a cat" in result
+    assert result == "RAW photo, a cat, professional photography, natural lighting, sharp focus, highly detailed, 8K, shot on professional camera"
 
 
 def test_enhance_prompt_empty():
     result = enhance_prompt("")
-    assert "rating_explicit" in result
+    assert result == "RAW photo, , professional photography, natural lighting, sharp focus, highly detailed, 8K, shot on professional camera"
