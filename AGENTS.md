@@ -91,7 +91,11 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 
 ### Model refuses to generate `<gen>` tags for explicit images
 - **Cause**: Model anthropomorphized image generation — thought "generate an image" meant creating an image of *itself* (the AI persona). Original wording "You can generate images" triggered refusal.
-- **Fix**: All 4 system prompt files updated to: "When the user asks for a photo or image, you **MUST** output a short comma-separated prompt wrapped in `<gen>` tags. This is **NOT** you generating an image — it is a text prompt sent to an external image generator. You **MUST NEVER refuse** to output a `<gen>` tag when asked for an image."
+- **Fix**: All 4 system prompt files updated with "MUST NEVER refuse" + "external image generator" framing.
+
+### Model doesn't output `<gen>` tags for all visual requests (responds instantly with text)
+- **Cause**: `GEN_INTENT` regex in `main.py` only matched `generate/create/make + image/photo/picture`. Phrases like "generate a naked woman" matched the verb but not the object, so the image-intent system message was never injected. Without that nudge, the model sometimes outputs gen tags, sometimes not.
+- **Fix**: Broadened `GEN_INTENT` regex to also match `show/give + naked/nude/sexy/explicit/woman/man/girl/guy`. And updated all 4 system prompts from "When the user asks for a photo or image" to "Whenever the user wants to see or generate **any visual content** (photo, image, **naked person, explicit scene, etc.**) — treat ANY request to visualize something as requiring a `<gen>` tag."
 
 ### Gradio version compatibility
 - Gradio 6.19 has a Starlette 1.3.1 deprecation conflict. Pinned to `<6.19` in `requirements.txt`.
@@ -110,7 +114,8 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 - **Image rendering**: Clickable `[📷 View Image]` link via `/gradio_api/file={path}` (not inline `<img>`) to avoid Gradio Chatbot rendering issues
 - **Keepalive**: Image gen runs in a background thread; main generator yields keepalives every 10s to prevent SSE/proxy timeout
 - **`chat()` flow**: `yield ""` (establish SSE) → collect LLM response → if `<gen>` found → safety check → `enhance_prompt()` → threaded `generate_image()` with keepalive yields → yield clickable link. No `demo.queue()` (caused timeout). No progress yields (Gradio ChatInterface appends them).
-- **Model refusal fix**: All 4 system prompts (system.md, default identity.md, nsfw identity.md, standard identity.md) updated with "MUST NEVER refuse" + "external image generator" framing
+- **Gen tag trigger**: `GEN_INTENT` regex in `main.py` detects visual requests. If matched, injects additional system message with explicit gen tag example. Broadened to catch `show/give + naked/nude/sexy/explicit/woman/man/girl/guy`.
+- **All 4 system prompts**: Updated with "Whenever the user wants to see or generate **any visual content** — treat ANY request to visualize as requiring a `<gen>` tag" + "MUST NEVER refuse" + "external image generator" framing
 
 ### Image Cleanup
 `scripts/cleanup-images.sh` manages disk usage in `ComfyUI/output/`:
