@@ -100,12 +100,7 @@ def chat(message, history, personality_name):
         enhanced = enhance_prompt(prompt)
         try:
             image_path = generate_image(enhanced)
-            yield {
-                "content": [
-                    {"type": "text", "text": clean_text},
-                    {"path": image_path},
-                ]
-            }
+            yield f"{clean_text}\n\n<img src=\"/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
         except Exception as e:
             yield f"{clean_text}\n\n[Image generation failed: {e}]"
     else:
