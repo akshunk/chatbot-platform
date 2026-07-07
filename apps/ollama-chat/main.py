@@ -190,7 +190,7 @@ def chat(message, history, personality_name):
         enhanced = enhance_prompt(prompt)
         try:
             image_path = generate_image(enhanced, negative_prompt=DEFAULT_NEGATIVE)
-            yield f"{clean_text}\n\n<img src=\"/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
+            yield f"{clean_text}\n\n<img src=\"/gradio_api/file={image_path}\" style=\"max-width: 100%; border-radius: 8px;\">"
         except Exception as e:
             yield f"{clean_text}\n\n[Image generation failed: {e}]"
     else:
@@ -236,5 +236,6 @@ def _warm_models():
 
 
 if __name__ == "__main__":
-    _warm_models()
+    import threading
+    threading.Thread(target=_warm_models, daemon=True).start()
     demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace/ComfyUI/output"])
