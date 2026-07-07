@@ -112,6 +112,15 @@ ollama pull dolphin-llama3:8b                      # companion model (once, ~4.7
 - **`chat()` flow**: `yield ""` (establish SSE) → collect LLM response → if `<gen>` found → safety check → `enhance_prompt()` → threaded `generate_image()` with keepalive yields → yield clickable link. No `demo.queue()` (caused timeout). No progress yields (Gradio ChatInterface appends them).
 - **Model refusal fix**: All 4 system prompts (system.md, default identity.md, nsfw identity.md, standard identity.md) updated with "MUST NEVER refuse" + "external image generator" framing
 
+### Image Cleanup
+`scripts/cleanup-images.sh` manages disk usage in `ComfyUI/output/`:
+```bash
+./scripts/cleanup-images.sh                  # keep 50 newest, delete >48h old
+./scripts/cleanup-images.sh --keep 100       # keep 100 newest
+./scripts/cleanup-images.sh --max-age 24     # delete >24h old
+./scripts/cleanup-images.sh --dry-run        # preview without deleting
+```
+
 ### Safety Filter
 `is_safe_prompt()` in `apps/ollama-chat/main.py` checks gen tag prompts for:
 - Animal keywords + explicit keywords → blocked
