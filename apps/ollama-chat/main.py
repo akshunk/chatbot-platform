@@ -59,7 +59,7 @@ def chat(message, history, personality_name):
     if has_image_intent(message):
         messages.append({
             "role": "system",
-            "content": "The user wants to generate an image. Provide a detailed visual description in <gen> tags like this: <gen>detailed scene description with pose, lighting, colors, and mood</gen>"
+            "content": "The user wants to generate an image. Describe the scene as a photograph in <gen> tags. Start with 'photograph of' or 'photo of'. Include camera framing, lighting, skin texture. Example: <gen>photograph of a woman, soft window lighting, detailed skin texture, shallow depth of field, candid expression</gen>"
         })
 
     payload = {
